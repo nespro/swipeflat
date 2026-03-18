@@ -1,0 +1,131 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  swipes       Swipe[]
+  searches     SearchConfig[]
+  savedFilters SavedFilter[]
+}
+
+model Portal {
+  id             String  @id @default(cuid())
+  name           String  @unique
+  baseUrl        String
+  isActive       Boolean @default(true)
+  scrapingConfig Json?
+
+  listings Listing[]
+}
+
+model Listing {
+  id         String @id @default(cuid())
+  portalId   String
+  externalId String
+  portalUrl  String @unique
+
+  title       String
+  description String? @db.Text
+  address     String
+  city        String
+  zipCode     String?
+  latitude    Float?
+  longitude   Float?
+
+  rent            Float
+  additionalCosts Float?
+  deposit         Float?
+
+  rooms          Float?
+  sizeSqm        Float?
+  floor          Int?
+  availableFrom  DateTime?
+  availableUntil DateTime?
+
+  features     Json?
+  images       String[]
+  floorplanUrl String?
+
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @updatedAt
+  isActive    Boolean  @default(true)
+  scrapedData Json?
+
+  portal Portal  @relation(fields: [portalId], references: [id])
+  swipes Swipe[]
+
+  @@unique([portalId, externalId])
+  @@index([city])
+  @@index([rent])
+  @@index([rooms])
+  @@index([availableFrom])
+}
+
+model Swipe {
+  id        String         @id @default(cuid())
+  userId    String
+  listingId String
+  direction SwipeDirection
+  swipedAt  DateTime       @default(now())
+  notes     String?
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, listingId])
+  @@index([userId, swipedAt])
+}
+
+enum SwipeDirection {
+  LIKE
+  DISLIKE
+  SUPERLIKE
+}
+
+model SearchConfig {
+  id     String  @id @default(cuid())
+  userId String
+  name   String?
+
+  location String
+  radiusKm Int    @default(0)
+
+  maxRent  Float?
+  minRooms Float?
+  maxRooms Float?
+  minSize  Float?
+
+  availableFrom  DateTime?
+  availableUntil DateTime?
+
+  propertyTypes String[]
+  portals       String[]
+  features      Json?
+
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SavedFilter {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  config    Json
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
